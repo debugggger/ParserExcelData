@@ -1,18 +1,21 @@
 import os
 import threading
 import time
-from pathlib import Path
+
+import pandas as pd
 
 import openpyxl
-import xlrd
 
 from tkinter import *
 from threading import Thread
 from tkinter import filedialog
+from pathlib import Path
 
 from peoplesData import People
 
 stopParsingThread = threading.Event()
+checkFilesThread = threading.Event()
+
 
 def startEvent():
     getChangeTime()
@@ -33,42 +36,98 @@ def browseFiles():
                                                       "*.xls*"),
                                                      ("all files",
                                                       "*.*")))
+    getSheetName()
     filePath.insert(0, fileName)
 
+def getSheetName():
+    sheetName = ""
+    if varGender.get() == 0:
+        sheetName = 'Рез_Муж'
+    if varGender.get() == 1:
+        sheetName = 'Рез_Жен'
+    return sheetName
+
+
+def getReserveFile():
+    try:
+        reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
+        name = (fileName.split('/')[-1]).split('.')[0]
+
+        maxTime = 0.01
+        truePath = ''
+        for file in os.listdir(reservePath):
+            ident = 0
+            if len(name) <= len(file):
+                for i in range(len(name)):
+                    if name[i] == file[i]:
+                        ident = 1
+                        truePath = reservePath + file
+                    else:
+                        ident = 0
+                        break
+            if ident == 1:
+                if os.path.getmtime(reservePath + file) > maxTime:
+                    maxTime = os.path.getmtime(reservePath + file)
+                    truePath = reservePath + file + '\\'
+
+        trueFile = ''
+        maxTimeFile = 0.01
+        for file in os.listdir(truePath):
+            current = truePath + file
+            if os.path.getmtime(current) > maxTimeFile:
+                if current.split('.')[-1] == 'xlsb':
+                    maxTimeFile = os.path.getmtime(current)
+                    trueFile = current
+
+        sheetName = getSheetName()
+        df = pd.read_excel(trueFile, engine='pyxlsb', sheet_name=sheetName)
+        nameTrueFile = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
+        df.to_excel(nameTrueFile)
+        xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
+        sheetName = 'Sheet1'
+        sheet = xlsx.get_sheet_by_name(sheetName)
+        sheet.delete_cols(1, 1)
+        xlsx.save(nameTrueFile)
+        return nameTrueFile
+    except:
+        return ''
 
 def getChangeTime():
     global t1
     t1 = os.path.getmtime(fileName)
 
 def parsingData():
-    defT = 0
-    while 'true':
-        if defT == 0:
-            if t1 == os.path.getmtime(fileName):
-                defT = 0
-            else:
-                defT = 1
-        else:
+    prevFile = ''
+    while True:
+
+        reserveFile = getReserveFile()
+
+
+        if t1 != os.path.getmtime(fileName):
             getChangeTime()
-            readData()
-            defT = 0
+            readData(fileName, getSheetName())
+
+        if reserveFile != prevFile:
+            prevFile = reserveFile
+            readData(reserveFile, "Sheet1")
+
+
 
         if stopParsingThread.is_set():
             break
-        time.sleep(2)
+        if reserveFile != '':
+            os.remove(reserveFile)
+        time.sleep(10)
 
-def readData():
-    global gender
+def readData(nameReadFile, sheetName):
     peoples = []
-    if varGender.get() == 0:
-        gender = 'Рез_Муж'
-    if varGender.get() == 1:
-        gender = 'Рез_Жен'
 
-    extension = fileName.split('.')[-1]
+    extension = nameReadFile.split('.')[-1]
     if extension == 'xlsx':
-        xlsx = openpyxl.load_workbook(fileName, data_only=True)
-        sheet = xlsx.get_sheet_by_name(gender)
+        xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
+        sheet = xlsx.get_sheet_by_name(sheetName)
+
+
         for cellObj in sheet[startPlace.get():lastPlace.get()]:
             currentPeople = People("", "", "", "", "", "", "", "", "", "", "")
             firstColumnInd = cellObj[0].column
@@ -147,5 +206,15 @@ btnStart.grid(column=0, row=3)
 
 btnStop = Button(window, text="остановить", command=stopEvent)
 btnStop.grid_remove()
+
+
+lblReserve = Label(window, text="Путь к папке")
+lblReserve.grid(column=0, row=4)
+filePathReserve = Entry(window, width=10)
+filePathReserve.grid(column=1, row=4)
+btnReserve = Button(window, text="поиск", command=browseFiles)
+btnReserve.grid(column=2, row=4)
+
+
 
 window.mainloop()
