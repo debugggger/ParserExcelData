@@ -24,9 +24,34 @@ def startEvent():
     threadParsing.start()
     btnStop.grid(column=1, row=3)
 
+#ToDo - убрать мусор в папке с резервными копиями
 def stopEvent():
     stopParsingThread.set()
     btnStop.grid_remove()
+    # reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
+    # name = (fileName.split('/')[-1]).split('.')[0]
+    #
+    # checkT = 0
+    # maxTime = 0.01
+    # truePath = ''
+    # for dir in os.listdir(reservePath):
+    #     if len(name) <= len(dir):
+    #         for i in range(len(name)):
+    #             if name[i] == dir[i]:
+    #                 checkT = 1
+    #                 truePath = reservePath + dir
+    #             else:
+    #                 checkT = 0
+    #                 break
+    #     if checkT == 1:
+    #         if os.path.getmtime(reservePath + dir) > maxTime:
+    #             maxTime = os.path.getmtime(reservePath + dir)
+    #             truePath = reservePath + dir
+    # for file in os.listdir(truePath):
+    #     os.chmod(truePath, 0o777)
+    #     os.remove(truePath +'\\' + file)
+    # os.rmdir(truePath)
+
 
 def browseFiles():
     global fileName
@@ -53,22 +78,23 @@ def getReserveFile():
         reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
         name = (fileName.split('/')[-1]).split('.')[0]
 
+        checkT = 0
         maxTime = 0.01
         truePath = ''
-        for file in os.listdir(reservePath):
-            ident = 0
-            if len(name) <= len(file):
+        for dir in os.listdir(reservePath):
+            if len(name) <= len(dir):
                 for i in range(len(name)):
-                    if name[i] == file[i]:
-                        ident = 1
-                        truePath = reservePath + file
+                    if name[i] == dir[i]:
+                        checkT = 1
+                        truePath = reservePath + dir
                     else:
-                        ident = 0
+                        checkT = 0
                         break
-            if ident == 1:
-                if os.path.getmtime(reservePath + file) > maxTime:
-                    maxTime = os.path.getmtime(reservePath + file)
-                    truePath = reservePath + file + '\\'
+
+            if checkT == 1:
+                if os.path.getmtime(reservePath + dir) > maxTime:
+                    maxTime = os.path.getmtime(reservePath + dir)
+                    truePath = reservePath + dir + '\\'
 
         trueFile = ''
         maxTimeFile = 0.01
@@ -78,16 +104,30 @@ def getReserveFile():
                 if current.split('.')[-1] == 'xlsb':
                     maxTimeFile = os.path.getmtime(current)
                     trueFile = current
+                if current.split('.')[-1] == 'xls':
+                    if len(current) >= len(trueFile):
+                        maxTimeFile = os.path.getmtime(current)
+                        trueFile = current
+
+
+        eng = ''
+        if trueFile.split('.')[-1] == 'xls':
+            eng = 'xlrd'
+
+        if trueFile.split('.')[-1] == 'xlsb':
+            eng = 'pyxlsb'
 
         sheetName = getSheetName()
-        df = pd.read_excel(trueFile, engine='pyxlsb', sheet_name=sheetName)
+        df = pd.read_excel(trueFile, engine=eng, sheet_name=sheetName)
         nameTrueFile = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
         df.to_excel(nameTrueFile)
+
         xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
         sheetName = 'Sheet1'
         sheet = xlsx.get_sheet_by_name(sheetName)
         sheet.delete_cols(1, 1)
         xlsx.save(nameTrueFile)
+        xlsx.close()
         return nameTrueFile
     except:
         return ''
@@ -102,21 +142,31 @@ def parsingData():
 
         reserveFile = getReserveFile()
 
-
         if t1 != os.path.getmtime(fileName):
+            if fileName.split('.')[-1] == 'xls':
+                df = pd.read_excel(fileName, engine='xlrd', sheet_name=getSheetName())
+                nameTrueFile = (fileName.split('/')[-1]).split('.')[0] + '.xlsx'
+                df.to_excel(nameTrueFile)
+
+                reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
+                sheetName = 'Sheet1'
+                xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
+                sheet = xlsx.get_sheet_by_name(sheetName)
+                sheet.delete_cols(1, 1)
+                xlsx.save(reservePath+nameTrueFile)
+                readData(reservePath+nameTrueFile, sheetName)
+                os.remove(reservePath+nameTrueFile)
+            else:
+                readData(fileName, getSheetName())
             getChangeTime()
-            readData(fileName, getSheetName())
 
         if reserveFile != prevFile:
             prevFile = reserveFile
             readData(reserveFile, "Sheet1")
-
-
+            #os.remove(reserveFile)
 
         if stopParsingThread.is_set():
             break
-        if reserveFile != '':
-            os.remove(reserveFile)
         time.sleep(10)
 
 def readData(nameReadFile, sheetName):
@@ -218,3 +268,6 @@ btnReserve.grid(column=2, row=4)
 
 
 window.mainloop()
+
+
+
