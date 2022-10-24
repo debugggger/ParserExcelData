@@ -24,34 +24,10 @@ def startEvent():
     threadParsing.start()
     btnStop.grid(column=1, row=3)
 
-#ToDo - убрать мусор в папке с резервными копиями
+
 def stopEvent():
     stopParsingThread.set()
     btnStop.grid_remove()
-    # reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
-    # name = (fileName.split('/')[-1]).split('.')[0]
-    #
-    # checkT = 0
-    # maxTime = 0.01
-    # truePath = ''
-    # for dir in os.listdir(reservePath):
-    #     if len(name) <= len(dir):
-    #         for i in range(len(name)):
-    #             if name[i] == dir[i]:
-    #                 checkT = 1
-    #                 truePath = reservePath + dir
-    #             else:
-    #                 checkT = 0
-    #                 break
-    #     if checkT == 1:
-    #         if os.path.getmtime(reservePath + dir) > maxTime:
-    #             maxTime = os.path.getmtime(reservePath + dir)
-    #             truePath = reservePath + dir
-    # for file in os.listdir(truePath):
-    #     os.chmod(truePath, 0o777)
-    #     os.remove(truePath +'\\' + file)
-    # os.rmdir(truePath)
-
 
 def browseFiles():
     global fileName
@@ -124,7 +100,7 @@ def getReserveFile():
 
         xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
         sheetName = 'Sheet1'
-        sheet = xlsx.get_sheet_by_name(sheetName)
+        sheet = xlsx[sheetName]
         sheet.delete_cols(1, 1)
         xlsx.save(nameTrueFile)
         xlsx.close()
@@ -144,18 +120,19 @@ def parsingData():
 
         if t1 != os.path.getmtime(fileName):
             if fileName.split('.')[-1] == 'xls':
+                reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
                 df = pd.read_excel(fileName, engine='xlrd', sheet_name=getSheetName())
                 nameTrueFile = (fileName.split('/')[-1]).split('.')[0] + '.xlsx'
-                df.to_excel(nameTrueFile)
+                patchXlsx = reservePath+nameTrueFile
+                df.to_excel(patchXlsx)
 
-                reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
                 sheetName = 'Sheet1'
-                xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
+                xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
                 sheet = xlsx.get_sheet_by_name(sheetName)
                 sheet.delete_cols(1, 1)
-                xlsx.save(reservePath+nameTrueFile)
-                readData(reservePath+nameTrueFile, sheetName)
-                os.remove(reservePath+nameTrueFile)
+                xlsx.save(patchXlsx)
+                readData(patchXlsx, sheetName)
+                os.remove(patchXlsx)
             else:
                 readData(fileName, getSheetName())
             getChangeTime()
@@ -175,7 +152,7 @@ def readData(nameReadFile, sheetName):
     extension = nameReadFile.split('.')[-1]
     if extension == 'xlsx':
         xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
-        sheet = xlsx.get_sheet_by_name(sheetName)
+        sheet = xlsx[sheetName]
 
 
         for cellObj in sheet[startPlace.get():lastPlace.get()]:
@@ -268,6 +245,3 @@ btnReserve.grid(column=2, row=4)
 
 
 window.mainloop()
-
-
-
