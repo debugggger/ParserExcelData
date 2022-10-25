@@ -11,11 +11,13 @@ from threading import Thread
 from tkinter import filedialog
 from pathlib import Path
 
+import termtables as tt
+from pip._internal.utils.misc import tabulate
+
 from peoplesData import People
 
 stopParsingThread = threading.Event()
 checkFilesThread = threading.Event()
-
 
 def startEvent():
     getChangeTime()
@@ -195,8 +197,19 @@ def readData(nameReadFile, sheetName):
             if cPeople.getTotal() < nPeople.getTotal():
                 peoples[j], peoples[j+1] = peoples[j+1], peoples[j]
 
+    # with open('result', 'r+') as file:
+    #     for line in file:
+    #         line = ''
+    #     file.close()
+
+
+    #fileRes = open('result', 'w')
+
+
     for i in peoples:
-        People.showData(i)
+        print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i), " ",
+             People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ", People.getC3(i), " ",
+             People.getSeks(i), " ", People.getTotal(i))
     print('______________________________')
 
 
