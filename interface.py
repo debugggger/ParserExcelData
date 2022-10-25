@@ -155,8 +155,9 @@ def readData(nameReadFile, sheetName):
         xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
         sheet = xlsx[sheetName]
 
-
-        for cellObj in sheet[startPlace.get():lastPlace.get()]:
+        startPlace = dataPlace.get().split(':')[0]
+        lastPlace = dataPlace.get().split(':')[-1]
+        for cellObj in sheet[startPlace:lastPlace]:
             currentPeople = People("", "", "", "", "", "", "", "", "", "", "")
             firstColumnInd = cellObj[0].column
             currentColumn = firstColumnInd
@@ -212,14 +213,11 @@ filePath.grid(column=1, row=0)
 btn = Button(window, text="поиск", command=browseFiles)
 btn.grid(column=2, row=0)
 
-startPlaceLbl = Label(window, text="Первая ячейка таблицы")
-startPlaceLbl.grid(column=0, row=1)
-startPlace = Entry(window, width=10)
-startPlace.grid(column=1, row=1)
-lastPlaceLbl = Label(window, text="Последняя ячейка таблицы")
-lastPlaceLbl.grid(column=2, row=1)
-lastPlace = Entry(window, width=10)
-lastPlace.grid(column=3, row=1)
+dataPlaceLbl = Label(window, text="Диапазон данных")
+dataPlaceLbl.grid(column=0, row=1)
+dataPlace = Entry(window, width=10)
+dataPlace.grid(column=1, row=1)
+
 
 varGender = IntVar()
 varGender.set(0)
