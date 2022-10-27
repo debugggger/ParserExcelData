@@ -1,18 +1,12 @@
 import os
 import threading
 import time
-
 import pandas as pd
-
 import openpyxl
 
 from tkinter import *
 from threading import Thread
 from tkinter import filedialog
-from pathlib import Path
-
-import termtables as tt
-from pip._internal.utils.misc import tabulate
 
 from peoplesData import People
 
@@ -54,7 +48,7 @@ def getSheetName():
 
 def getReserveFile():
     try:
-        reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
+        reservePath = filePathReserve.get()
         name = (fileName.split('/')[-1]).split('.')[0]
 
         checkT = 0
@@ -123,7 +117,7 @@ def parsingData():
 
         if t1 != os.path.getmtime(fileName):
             if fileName.split('.')[-1] == 'xls':
-                reservePath = r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\'
+                reservePath = filePathReserve.get()
                 df = pd.read_excel(fileName, engine='xlrd', sheet_name=getSheetName())
                 nameTrueFile = (fileName.split('/')[-1]).split('.')[0] + '.xlsx'
                 patchXlsx = reservePath+nameTrueFile
@@ -197,15 +191,6 @@ def readData(nameReadFile, sheetName):
             if cPeople.getTotal() < nPeople.getTotal():
                 peoples[j], peoples[j+1] = peoples[j+1], peoples[j]
 
-    # with open('result', 'r+') as file:
-    #     for line in file:
-    #         line = ''
-    #     file.close()
-
-
-    #fileRes = open('result', 'w')
-
-
     for i in peoples:
         print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i), " ",
              People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ", People.getC3(i), " ",
@@ -239,21 +224,16 @@ rbtnWoman = Radiobutton(text='Женские соревнования', variable
 rbtnMan.grid(column=0, row=2)
 rbtnWoman.grid(column=1, row=2)
 
-
 btnStart = Button(window, text="начать", command=startEvent)
 btnStart.grid(column=0, row=3)
 
 btnStop = Button(window, text="остановить", command=stopEvent)
 btnStop.grid_remove()
 
-
 lblReserve = Label(window, text="Путь к папке")
 lblReserve.grid(column=0, row=4)
 filePathReserve = Entry(window, width=10)
 filePathReserve.grid(column=1, row=4)
-btnReserve = Button(window, text="поиск", command=browseFiles)
-btnReserve.grid(column=2, row=4)
-
-
+filePathReserve.insert(0, r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\')
 
 window.mainloop()
