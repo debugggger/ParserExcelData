@@ -1,4 +1,10 @@
 # created by virtualenv automatically
 
-*.xls*
+*.xlsx
+*.xls
+*.cfg
 .idea
+/Lib/
+/Scripts/
+/__pycache__/
+*.txt
