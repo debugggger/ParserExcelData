@@ -10,11 +10,12 @@ from tkinter import filedialog
 from peoplesData import People
 
 stopParsingThread = threading.Event()
-checkFilesThread = threading.Event()
 
 class Parser(object):
     def __init__(self, btnStop, filePath, varGender, filePathReserve, dataPlace):
-
+        self.fileName = ''
+        self.peoples = []
+        self.t1 = 0.0
         self.btnStop = btnStop
         self.filePath = filePath
         self.varGender = varGender
@@ -22,8 +23,7 @@ class Parser(object):
         self.dataPlace = dataPlace
 
     def startEvent(self):
-        self.getChangeTime()
-        global threadParsing
+        self.t1 = self.getChangeTime()
         threadParsing = Thread(target=self.parsingData)
         threadParsing.start()
         self.btnStop.grid(column=1, row=3)
@@ -34,15 +34,14 @@ class Parser(object):
         self.btnStop.grid_remove()
 
     def browseFiles(self):
-        global fileName
-        fileName = filedialog.askopenfilename(initialdir="/",
+        self.fileName = filedialog.askopenfilename(initialdir="/",
                                               title="Select a File",
                                               filetypes=(("Excel files",
                                                           "*.xls*"),
                                                          ("all files",
                                                           "*.*")))
         self.getSheetName()
-        self.filePath.insert(0, fileName)
+        self.filePath.insert(0, self.fileName)
 
     def getSheetName(self):
         sheetName = ""
@@ -52,12 +51,10 @@ class Parser(object):
             sheetName = 'Рез_Жен'
         return sheetName
 
-
-
     def getReserveFile(self):
         try:
             reservePath = self.filePathReserve.get()
-            name = (fileName.split('/')[-1]).split('.')[0]
+            name = (self.fileName.split('/')[-1]).split('.')[0]
 
             checkT = 0
             maxTime = 0.01
@@ -114,8 +111,7 @@ class Parser(object):
             return ''
 
     def getChangeTime(self):
-        global t1
-        t1 = os.path.getmtime(fileName)
+        self.t1 = os.path.getmtime(self.fileName)
 
     def parsingData(self):
         prevFile = ''
@@ -123,14 +119,13 @@ class Parser(object):
 
             reserveFile = self.getReserveFile()
 
-            if t1 != os.path.getmtime(fileName):
-                if fileName.split('.')[-1] == 'xls':
+            if self.t1 != os.path.getmtime(self.fileName):
+                if self.fileName.split('.')[-1] == 'xls':
                     reservePath = self.filePathReserve.get()
-                    df = pd.read_excel(fileName, engine='xlrd', sheet_name=self.getSheetName())
-                    nameTrueFile = (fileName.split('/')[-1]).split('.')[0] + '.xlsx'
+                    df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.getSheetName())
+                    nameTrueFile = (self.fileName.split('/')[-1]).split('.')[0] + '.xlsx'
                     patchXlsx = reservePath+nameTrueFile
                     df.to_excel(patchXlsx)
-
                     sheetName = 'Sheet1'
                     xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
                     sheet = xlsx.get_sheet_by_name(sheetName)
@@ -139,7 +134,7 @@ class Parser(object):
                     self.readData(patchXlsx, sheetName)
                     os.remove(patchXlsx)
                 else:
-                    self.readData(fileName, self.getSheetName())
+                    self.readData(self.fileName, self.getSheetName())
                 self.getChangeTime()
 
             if reserveFile != prevFile:
@@ -152,20 +147,18 @@ class Parser(object):
 
     def readData(self,nameReadFile, sheetName):
         self.peoples = []
-
         extension = nameReadFile.split('.')[-1]
         if extension == 'xlsx':
             xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
             sheet = xlsx[sheetName]
-
             startPlace = self.dataPlace.get().split(':')[0]
             lastPlace = self.dataPlace.get().split(':')[-1]
             for cellObj in sheet[startPlace:lastPlace]:
-                currentPeople = People("", "", "", "", "", "", "", "", "", "", "")
+                currentPeople = People("", "", "", "", "", "", "", "", "", "", "", "", "")
                 firstColumnInd = cellObj[0].column
                 currentColumn = firstColumnInd
                 for cell in cellObj:
-                    if currentColumn == firstColumnInd:
+                    if currentColumn == firstColumnInd+1:
                         currentPeople.place = cell.value
                     if currentColumn == firstColumnInd + 3:
                         currentPeople.name = cell.value
@@ -183,8 +176,12 @@ class Parser(object):
                         currentPeople.c2 = cell.value
                     if currentColumn == firstColumnInd + 12:
                         currentPeople.c3 = cell.value
+                    if currentColumn == firstColumnInd + 17:
+                        currentPeople.turns1 = cell.value
+                    if currentColumn == firstColumnInd + 20:
+                        currentPeople.turns2 = cell.value
                     if currentColumn == firstColumnInd + 21:
-                        currentPeople.seks = cell.value
+                        currentPeople.secBalls = cell.value
                     if currentColumn == firstColumnInd + 23:
                         currentPeople.total = cell.value
                     currentColumn += 1
@@ -201,5 +198,5 @@ class Parser(object):
         for i in self.peoples:
             print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i), " ",
                  People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ", People.getC3(i), " ",
-                 People.getSeks(i), " ", People.getTotal(i))
+                 People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
         print('______________________________')
