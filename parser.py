@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import time
 import pandas as pd
@@ -15,7 +16,15 @@ class Parser(object):
     def __init__(self, btnStop, filePath, varGender, filePathReserve, dataPlace):
         self.fileName = ''
         self.peoples = []
+        self.prevExcDataM = []
+        self.prevExcDataW = []
+        self.cvalResMCol = 0
+        self.cvalResMRow = 0
+        self.finalResMCol = 0
+        self.finalResMRow = 0
+        self.sheet = ''
         self.t1 = 0.0
+        self.t2 = 0.0
         self.btnStop = btnStop
         self.filePath = filePath
         self.varGender = varGender
@@ -23,7 +32,6 @@ class Parser(object):
         self.dataPlace = dataPlace
 
     def startEvent(self):
-        self.t1 = self.getChangeTime()
         threadParsing = Thread(target=self.parsingData)
         threadParsing.start()
         self.btnStop.grid(column=1, row=3)
@@ -40,16 +48,10 @@ class Parser(object):
                                                           "*.xls*"),
                                                          ("all files",
                                                           "*.*")))
-        self.getSheetName()
-        self.filePath.insert(0, self.fileName)
 
-    def getSheetName(self):
-        sheetName = ""
-        if self.varGender.get() == 0:
-            sheetName = 'Рез_Муж'
-        if self.varGender.get() == 1:
-            sheetName = 'Рез_Жен'
-        return sheetName
+        self.filePath.insert(0, self.fileName)
+        self.getChangeTime()
+        self.getPrevData()
 
     def getReserveFile(self):
         try:
@@ -86,8 +88,7 @@ class Parser(object):
                         if len(current) >= len(trueFile):
                             maxTimeFile = os.path.getmtime(current)
                             trueFile = current
-
-
+            self.t2 = os.path.getmtime(trueFile)
             eng = ''
             if trueFile.split('.')[-1] == 'xls':
                 eng = 'xlrd'
@@ -95,18 +96,52 @@ class Parser(object):
             if trueFile.split('.')[-1] == 'xlsb':
                 eng = 'pyxlsb'
 
-            sheetName = self.getSheetName()
-            df = pd.read_excel(trueFile, engine=eng, sheet_name=sheetName)
-            nameTrueFile = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
-            df.to_excel(nameTrueFile)
+            startPlace = 'A1'
+            lastPlace = 'z210'
+            dfM = pd.read_excel(trueFile, engine=eng, sheet_name='Рез_Муж')
+            nameTrueFileM = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
+            dfM.to_excel(nameTrueFileM)
 
-            xlsx = openpyxl.load_workbook(nameTrueFile, data_only=True)
+            xlsx = openpyxl.load_workbook(nameTrueFileM, data_only=True)
             sheetName = 'Sheet1'
             sheet = xlsx[sheetName]
             sheet.delete_cols(1, 1)
-            xlsx.save(nameTrueFile)
-            xlsx.close()
-            return nameTrueFile
+            index = 26
+            for row in sheet[startPlace:lastPlace]:
+                for cell in row:
+                    if cell.value != self.prevExcDataM[index]:
+                        if type(cell.value) == str:
+                            if re.search(r'Unnamed', cell.value):
+                                break
+                        self.sheet = 'Рез_Муж'
+                        sheet.title = self.sheet
+                        xlsx.save(nameTrueFileM)
+                        xlsx.close()
+                        return nameTrueFileM
+                    index += 1
+
+            dfW = pd.read_excel(trueFile, engine=eng, sheet_name='Рез_Жен')
+            nameTrueFileW = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
+            dfW.to_excel(nameTrueFileW)
+
+            xlsx = openpyxl.load_workbook(nameTrueFileW, data_only=True)
+            sheetName = 'Sheet1'
+            sheet = xlsx[sheetName]
+            sheet.delete_cols(1, 1)
+            index = 26
+            for row in sheet[startPlace:lastPlace]:
+                for cell in row:
+                    if cell.value != self.prevExcDataW[index]:
+                        if type(cell.value) == str:
+                            if re.search(r'Unnamed', cell.value):
+                                break
+                        self.sheet = 'Рез_Жен'
+                        sheet.title = self.sheet
+                        xlsx.save(nameTrueFileW)
+                        xlsx.close()
+                        return nameTrueFileW
+                    index += 1
+
         except:
             return ''
 
@@ -116,13 +151,12 @@ class Parser(object):
     def parsingData(self):
         prevFile = ''
         while True:
-
             reserveFile = self.getReserveFile()
 
             if self.t1 != os.path.getmtime(self.fileName):
                 if self.fileName.split('.')[-1] == 'xls':
                     reservePath = self.filePathReserve.get()
-                    df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.getSheetName())
+                    df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.sheet)
                     nameTrueFile = (self.fileName.split('/')[-1]).split('.')[0] + '.xlsx'
                     patchXlsx = reservePath+nameTrueFile
                     df.to_excel(patchXlsx)
@@ -130,35 +164,177 @@ class Parser(object):
                     xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
                     sheet = xlsx.get_sheet_by_name(sheetName)
                     sheet.delete_cols(1, 1)
+                    sheet.title = self.sheet
                     xlsx.save(patchXlsx)
-                    self.readData(patchXlsx, sheetName)
+                    self.readData(patchXlsx, 'handRecovery')
                     os.remove(patchXlsx)
                 else:
-                    self.readData(self.fileName, self.getSheetName())
+                    self.readData(self.fileName, 'handRecovery')
                 self.getChangeTime()
 
-            if reserveFile != prevFile:
+
+            if reserveFile != prevFile and os.path.getmtime(self.fileName) < self.t2:
                 prevFile = reserveFile
-                self.readData(reserveFile, "Sheet1")
+                self.readData(reserveFile, 'autoRecovery')
 
             if stopParsingThread.is_set():
                 break
             time.sleep(10)
 
-    def readData(self,nameReadFile, sheetName):
+    def getPrevData(self):
+        self.prevExcDataM = []
+        self.prevExcDataW = []
+        xlsx = openpyxl.load_workbook(self.fileName, data_only=True)
+        currentSheet = xlsx['Рез_Муж']
+        i = 1
+        for row in currentSheet['A1':'Z210']:
+            j = 1
+            for cell in row:
+                self.prevExcDataM.append(cell.value)
+                if type(cell.value) == str and re.search(r'квал', cell.value):
+                    self.cvalResMCol = cell.column_letter
+                    self.cvalResMRow = i + 2
+                if type(cell.value) == str and re.search(r'финал', cell.value):
+                    self.finalResMCol = cell.column_letter
+                    self.finalResMRow = i + 2
+                j += 1
+            i += 1
+
+        currentSheet = xlsx['Рез_Жен']
+        i = 1
+        for row in currentSheet['A1':'Z210']:
+            j = 1
+            for cell in row:
+                self.prevExcDataW.append(cell.value)
+                if type(cell.value) == str and re.search(r'квал', cell.value):
+                    self.cvalResWCol = cell.column_letter
+                    self.cvalResWRow = i + 2
+                if type(cell.value) == str and re.search(r'финал', cell.value):
+                    self.finalResWCol = cell.column_letter
+                    self.finalResWRow = i + 2
+                j += 1
+            i += 1
+
+
+    def readData(self, nameReadFile, mode):
         self.peoples = []
-        extension = nameReadFile.split('.')[-1]
-        if extension == 'xlsx':
-            xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
-            sheet = xlsx[sheetName]
-            startPlace = self.dataPlace.get().split(':')[0]
-            lastPlace = self.dataPlace.get().split(':')[-1]
+        xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
+        startPlace = 'A1'
+        lastPlace = 'z210'
+        isChange = 0
+        index = 0
+        isExit = 0
+        i = 1
+        stage = ''
+
+        if mode == 'autoRecovery' and self.sheet != '':
+            currentSheet = xlsx[self.sheet]
+
+            for row in currentSheet[startPlace:lastPlace]:
+                for cell in row:
+                    if self.sheet == 'Рез_Муж':
+                        if cell.value != self.prevExcDataM[index]:
+                            if type(cell.value) == str:
+                                if re.search(r'Unnamed', cell.value):
+                                    break
+                            isChange = 1
+                            self.sheet = 'Рез_Муж'
+                            if i >= self.cvalResMRow:
+                                startPlace = str(self.cvalResMCol) + str(self.cvalResMRow)
+                                lastPlace = 'z210'
+                                isExit = 1
+                                stage = 'квалификация, мужчины'
+                                break
+                            if i >= self.finalResMRow and i < self.cvalResMRow:
+                                startPlace = str(self.finalResMCol) + str(self.finalResMRow)
+                                lastPlace = 'z' + str(self.cvalResMRow - 3)
+                                isExit = 1
+                                stage = 'финал, мужчины'
+                                break
+                    if self.sheet == 'Рез_Жен':
+                        if cell.value != self.prevExcDataW[index]:
+                            if type(cell.value) == str:
+                                if re.search(r'Unnamed', cell.value):
+                                    break
+                            isChange = 1
+                            self.sheet = 'Рез_Жен'
+                            if i >= self.cvalResWRow:
+                                startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
+                                lastPlace = 'z210'
+                                isExit = 1
+                                stage = 'квалификация, женщины'
+                                break
+                            if i >= self.finalResWRow and i < self.cvalResWRow:
+                                startPlace = str(self.finalResWCol) + str(self.finalResWRow)
+                                lastPlace = 'z' + str(self.cvalResWRow - 3)
+                                isExit = 1
+                                stage = 'финал, женщины'
+                                break
+                    index += 1
+                i += 1
+                if isExit == 1:
+                    break
+
+        if mode == 'handRecovery':
+            currentSheet = xlsx['Рез_Муж']
+
+            for row in currentSheet[startPlace:lastPlace]:
+                for cell in row:
+                    if cell.value != self.prevExcDataM[index]:
+                        isChange = 1
+                        self.sheet = 'Рез_Муж'
+                        if i >= self.cvalResMRow:
+                            startPlace =  str(self.cvalResMCol) + str(self.cvalResMRow)
+                            lastPlace = 'z210'
+                            isExit = 1
+                            stage = 'квалификация, мужчины'
+                            break
+                        if i >= self.finalResMRow and i < self.cvalResMRow:
+                            startPlace = str(self.finalResMCol) + str(self.finalResMRow)
+                            lastPlace = 'z' + str(self.cvalResMRow - 3)
+                            isExit = 1
+                            stage = 'финал, мужчины'
+                            break
+                    index += 1
+                i += 1
+                if isExit == 1:
+                    break
+
+            if isChange == 0:
+                i = 1
+                currentSheet = xlsx['Рез_Жен']
+                index = 0
+                for row in currentSheet[startPlace:lastPlace]:
+                    for cell in row:
+                        if cell.value != self.prevExcDataW[index]:
+                            isChange = 1
+                            self.sheet = 'Рез_Жен'
+                            if i >= self.cvalResWRow:
+                                startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
+                                lastPlace = 'z210'
+                                isExit = 1
+                                stage = 'квалификация, женщины'
+                                break
+                            if i >= self.finalResWRow and i < self.cvalResWRow:
+                                startPlace = str(self.finalResWCol) + str(self.finalResWRow)
+                                lastPlace = 'z' + str(self.cvalResWRow - 3)
+                                isExit = 1
+                                stage = 'финал, женщины'
+                                break
+                        index += 1
+                    i += 1
+                    if isExit == 1:
+                        break
+
+
+        if isChange == 1:
+            sheet = xlsx[self.sheet]
             for cellObj in sheet[startPlace:lastPlace]:
                 currentPeople = People("", "", "", "", "", "", "", "", "", "", "", "", "")
                 firstColumnInd = cellObj[0].column
                 currentColumn = firstColumnInd
                 for cell in cellObj:
-                    if currentColumn == firstColumnInd+1:
+                    if currentColumn == firstColumnInd + 1:
                         currentPeople.place = cell.value
                     if currentColumn == firstColumnInd + 3:
                         currentPeople.name = cell.value
@@ -188,15 +364,23 @@ class Parser(object):
                 if currentPeople.total is not None:
                     self.peoples.append(currentPeople)
 
-        for i in range(len(self.peoples)-1):
-            for j in range(len(self.peoples)-i-1):
-                cPeople = self.peoples[j]
-                nPeople = self.peoples[j+1]
-                if cPeople.getTotal() < nPeople.getTotal():
-                    self.peoples[j], self.peoples[j+1] = self.peoples[j+1], self.peoples[j]
+            for i in range(len(self.peoples) - 1):
+                for j in range(len(self.peoples) - i - 1):
+                    cPeople = self.peoples[j]
+                    nPeople = self.peoples[j + 1]
+                    if cPeople.getTotal() < nPeople.getTotal():
+                        self.peoples[j], self.peoples[j + 1] = self.peoples[j + 1], self.peoples[j]
 
-        for i in self.peoples:
-            print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i), " ",
-                 People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ", People.getC3(i), " ",
-                 People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
-        print('______________________________')
+            print(stage)
+            print('______________________________')
+            for i in self.peoples:
+                if People.getTotal(i) != 0:
+                    print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i),
+                          " ",
+                          People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ",
+                          People.getC3(i), " ",
+                          People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
+            print('______________________________')
+
+            self.getPrevData()
+
