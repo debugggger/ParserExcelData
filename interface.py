@@ -106,6 +106,10 @@ class UserApp(Tk):
         self.errorMsg = Label(self, foreground="red", text="Проверьте имена листов")
         self.errorMsg.grid(column=0, row=6)
 
+    def errorMessageAdr(self):
+        self.errorMsg = Label(self, foreground="red", text="Проверьте указанный адрес ячейки")
+        self.errorMsg.grid(column=0, row=6)
+
 if __name__ == "__main__":
     app = UserApp()
     app.title("")

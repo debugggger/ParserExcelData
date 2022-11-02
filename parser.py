@@ -39,18 +39,24 @@ class Parser(object):
         self.app = app
 
     def col2num(self, col):
-        num = 0
-        for c in col:
-            if c in string.ascii_letters:
-                num = num * 26 + (ord(c.upper()) - ord('A')) + 1
-        return num
+        try:
+            num = 0
+            for c in col:
+                if c in string.ascii_letters:
+                    num = num * 26 + (ord(c.upper()) - ord('A')) + 1
+            return num
+        except:
+            self.app.errorMessageAdr()
 
     def lastColLetter(self, col):
-        letters = ''
-        for c in col:
-            if c in string.ascii_letters:
-                letters += c
-        return letters
+        try:
+            letters = ''
+            for c in col:
+                if c in string.ascii_letters:
+                    letters += c
+            return letters
+        except:
+            self.app.errorMessageAdr()
 
     def startEvent(self):
         threadParsing = Thread(target=self.parsingData)
@@ -252,22 +258,25 @@ class Parser(object):
             self.app.errorMessageNoSheet()
 
     def getWData(self, file):
-        self.prevExcDataW = []
-        xlsx = openpyxl.load_workbook(file, data_only=True)
-        currentSheet = xlsx[self.womanList]
-        i = 1
-        for row in currentSheet[self.startPlace:self.lastPlace]:
-            j = 1
-            for cell in row:
-                self.prevExcDataW.append(cell.value)
-                if type(cell.value) == str and re.search(r'квал', cell.value):
-                    self.cvalResWCol = cell.column_letter
-                    self.cvalResWRow = i + 2
-                if type(cell.value) == str and re.search(r'финал', cell.value):
-                    self.finalResWCol = cell.column_letter
-                    self.finalResWRow = i + 2
-                j += 1
-            i += 1
+        try:
+            self.prevExcDataW = []
+            xlsx = openpyxl.load_workbook(file, data_only=True)
+            currentSheet = xlsx[self.womanList]
+            i = 1
+            for row in currentSheet[self.startPlace:self.lastPlace]:
+                j = 1
+                for cell in row:
+                    self.prevExcDataW.append(cell.value)
+                    if type(cell.value) == str and re.search(r'квал', cell.value):
+                        self.cvalResWCol = cell.column_letter
+                        self.cvalResWRow = i + 2
+                    if type(cell.value) == str and re.search(r'финал', cell.value):
+                        self.finalResWCol = cell.column_letter
+                        self.finalResWRow = i + 2
+                    j += 1
+                i += 1
+        except:
+            self.app.errorMessageNoSheet()
 
 
     def getPrevData(self, file, mode):
