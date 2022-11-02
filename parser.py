@@ -25,8 +25,8 @@ class Parser(object):
         self.finalResMRow = 0
         self.prevReserveFile = ''
         self.sheet = ''
-        self.t1 = 0.0
-        self.t2 = 0.0
+        self.tChOriFile = 0.0
+        self.tChResFile = 0.0
         self.btnStop = btnStop
         self.filePath = filePath
         self.filePathReserve = filePathReserve
@@ -37,6 +37,7 @@ class Parser(object):
         self.manList = ManList
         self.womanList = WomanList
         self.app = app
+        self.stopParsingThread = threading.Event()
 
     def col2num(self, col):
         try:
@@ -63,7 +64,6 @@ class Parser(object):
         threadParsing.start()
         self.btnStop.grid(column=1, row=5)
         self.app.errorMsg.grid_remove()
-        self.stopParsingThread = threading.Event()
         self.colInd = self.col2num(self.lastPlace)
         self.colLetter = self.lastColLetter(self.lastPlace)
 
@@ -85,9 +85,9 @@ class Parser(object):
             self.getChangeTime()
             reserveFile = self.getReserveFile()
             if reserveFile != '':
-                if os.path.getmtime(reserveFile) > os.path.getmtime(self.fileName):
+                if self.tChResFile > self.tChOriFile:
                     self.getPrevData(reserveFile, 'autoRecovery')
-                if self.t2 <= self.t1:
+                if self.tChResFile <= self.tChOriFile:
                     self.getPrevData(self.fileName, 'handRecovery')
             else:
                 self.getPrevData(self.fileName, 'handRecovery')
@@ -139,7 +139,7 @@ class Parser(object):
         trueFile = self.getReserveFile()
         if trueFile == '':
             return trueFile
-        self.t2 = os.path.getmtime(trueFile)
+        self.tChResFile = os.path.getmtime(trueFile)
         self.prevReserveFile = trueFile
         eng = ''
         if trueFile.split('.')[-1] == 'xls':
@@ -198,7 +198,7 @@ class Parser(object):
 
 
     def getChangeTime(self):
-        self.t1 = os.path.getmtime(self.fileName)
+        self.tChOriFile = os.path.getmtime(self.fileName)
 
     def parsingData(self):
         try:
@@ -206,7 +206,7 @@ class Parser(object):
             while True:
                 reserveFile = self.getXlsxReserveFile()
 
-                if self.t1 != os.path.getmtime(self.fileName):
+                if self.tChOriFile != os.path.getmtime(self.fileName):
                     if self.fileName.split('.')[-1] == 'xls':
                         reservePath = self.filePathReserve.get()
                         df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.sheet)
@@ -226,7 +226,7 @@ class Parser(object):
                     self.getChangeTime()
 
 
-                if reserveFile != prevFile and os.path.getmtime(self.fileName) < self.t2 and reserveFile != '':
+                if reserveFile != prevFile and os.path.getmtime(self.fileName) < self.tChResFile and reserveFile != '':
                     prevFile = reserveFile
                     self.readData(reserveFile, 'autoRecovery')
 
