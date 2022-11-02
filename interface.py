@@ -117,7 +117,10 @@ if __name__ == "__main__":
     app["bg"] = "#171717"
     width = app.winfo_screenwidth()
     height = app.winfo_screenheight()
-    app.geometry('%dx%d' % (width / 3, height / 4))
+    x = (width / 2) - (width / 6)
+    y = (height / 2) - (height / 8)
+    app.geometry('%dx%d+%d+%d' % (width / 3, height / 4, x, y))
+
 
     app.mainloop()
 
