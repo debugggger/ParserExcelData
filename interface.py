@@ -1,10 +1,6 @@
-import ast
 import os
-import pickle
-import tkinter
 from tkinter import *
 
-from dictionary import ExcDictionary
 from parser import Parser
 
 def browseFiles():
@@ -14,96 +10,111 @@ def startEvent():
 def stopEvent():
     parser.stopEvent()
 
-class UserApp(tkinter.Tk):
+class UserApp(Tk):
     def __init__(self):
         super().__init__()
+        self.lbl = Label(self, background="#171717", foreground="white", text="Путь к рабочему файлу")
+        self.lbl.grid(column=0, row=0)
+        self.filePath = Entry(self, width=40)
+        self.filePath.grid(column=1, row=0)
+        self.btn = Button(self, text="поиск", command=browseFiles)
+        self.btn.grid(column=2, row=0)
 
-window = Tk()
-window.title("")
-width = window.winfo_screenwidth()
-height = window.winfo_screenheight()
-window.geometry('%dx%d' % (width/3, height/4))
+        self.lblReserve = Label(self, text="Путь к резервной папке")
+        self.lblReserve.grid(column=0, row=1)
+        self.filePathReserve = Entry(self, width=40)
+        self.filePathReserve.grid(column=1, row=1)
+        self.filePathReserve.insert(0, r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\')
 
-dictionary = {}
-maxData = 'z210'
-manListName = 'Рез_Муж'
-womanListName = 'Рез_Жен'
-try:
-    with open('dataFile.txt') as file:
-        lines = file.read().splitlines()
+        self.dataPlaceLbl = Label(self, text="Последняя ячейка данных")
+        self.dataPlaceLbl.grid(column=0, row=2)
+        self.dataPlace = Entry(self, width=10)
+        self.dataPlace.grid(column=1, row=2)
+        self.btnUpdDP = Button(self, text="обновить", command=self.updDict)
+        self.btnUpdDP.grid(column=2, row=2)
 
-    for line in lines:
-        key, value = line.split(': ')
-        dictionary.update({key: value})
+        self.lblManList = Label(self, text="Имя листа мужских соревнований")
+        self.lblManList.grid(column=0, row=3)
+        self.manList = Entry(self, width=10)
+        self.manList.grid(column=1, row=3)
+        self.btnUpdMLN = Button(self, text="обновить", command=self.updDict)
+        self.btnUpdMLN.grid(column=2, row=3)
 
-    maxData = dictionary.get('maxData')
-    manList = dictionary.get('manList')
-    womanList = dictionary.get('womanList')
-except:
-    print("Используются стандартные настройки листов")
+        self.lblWomanList = Label(self, text="Имя листа женских соревнований")
+        self.lblWomanList.grid(column=0, row=4)
+        self.womanList = Entry(self, width=10)
+        self.womanList.grid(column=1, row=4)
+        self.btnUpdWLN = Button(self, text="обновить", command=self.updDict)
+        self.btnUpdWLN.grid(column=2, row=4)
 
+        self.btnStart = Button(self, text="начать", command=startEvent)
+        self.btnStart.grid(column=0, row=5)
 
-lbl = Label(window, text="Путь к файлу")
-lbl.grid(column=0, row=0)
-filePath = Entry(window, width=40)
-filePath.grid(column=1, row=0)
-btn = Button(window, text="поиск", command=browseFiles)
-btn.grid(column=2, row=0)
+        self.btnStop = Button(self, text="остановить", command=stopEvent)
+        self.btnStop.grid_remove()
 
-dataPlaceLbl = Label(window, text="Последняя ячейка данных")
-dataPlaceLbl.grid(column=0, row=1)
-dataPlace = Entry(window, width=10)
-dataPlace.grid(column=1, row=1)
+        self.errorMsg = Label(self, foreground="red", text="")
+        self.errorMsg.grid_remove()
 
-btnStart = Button(window, text="начать", command=startEvent)
-btnStart.grid(column=0, row=3)
+        self.dictionary = {}
+        self.maxData = ''
+        self.manListName = ''
+        self.womanListName = ''
+        self.getDict()
+        global parser
+        parser = Parser(self, self.btnStop, self.filePath, self.filePathReserve, self.maxData, self.manListName, self.womanListName)
 
-btnStop = Button(window, text="остановить", command=stopEvent)
-btnStop.grid_remove()
+    def getDict(self):
+        try:
+            with open('dataFile.txt') as file:
+                lines = file.read().splitlines()
 
-lblReserve = Label(window, text="Путь к папке")
-lblReserve.grid(column=0, row=4)
-filePathReserve = Entry(window, width=40)
-filePathReserve.grid(column=1, row=4)
-filePathReserve.insert(0, r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\')
+            for line in lines:
+                key, value = line.split(': ')
+                self.dictionary.update({key: value})
 
-lblManList = Label(window, text="Имя листа мужских соревнований")
-lblManList.grid(column=0, row=5)
-manList = Entry(window, width=10)
-manList.grid(column=1, row=5)
+            self.maxData = self.dictionary.get('maxData')
+            self.manListName = self.dictionary.get('manList')
+            self.womanListName = self.dictionary.get('womanList')
+            self.dataPlace.insert(0, self.maxData)
+            self.manList.insert(0, self.manListName)
+            self.womanList.insert(0, self.womanListName)
+        except:
+            print("Используются стандартные настройки листов")
 
-lblWomanList = Label(window, text="Имя листа женских соревнований")
-lblWomanList.grid(column=0, row=6)
-womanList = Entry(window, width=10)
-womanList.grid(column=1, row=6)
+    def updDict(self):
+        if self.dataPlace.get() != '':
+            self.dictionary.update({'maxData': self.dataPlace.get()})
+        if self.manList.get() != '':
+            self.dictionary.update({'manList': self.manList.get()})
+        if self.womanList.get() != '':
+            self.dictionary.update({'womanList': self.womanList.get()})
 
-if dataPlace.get() != '':
-    dictionary.update({'maxData': dataPlace.get()})
-else:
-    dictionary.update({'maxData': maxData})
-if manList.get() != '':
-    dictionary.update({'manList': manList.get()})
-else:
-    dictionary.update({'manList': manListName})
-if womanList.get() != '':
-    dictionary.update({'womanList': womanList.get()})
-else:
-    dictionary.update({'womanList': womanListName})
+        file = open('dataFile.txt', 'w')
+        for key, value in self.dictionary.items():
+            file.write(f'{key}: {value}\n')
+        file.close()
 
-file = open('dataFile.txt', 'w')
-for key, value in dictionary.items():
-    file.write(f'{key}: {value}\n')
-file.close()
+    def errorMessageNoFile(self):
+        stopEvent()
+        self.errorMsg = Label(self, foreground="red", text="Ошибка чтения файла")
+        self.errorMsg.grid(column=0, row=6)
+        browseFiles()
 
-manList.insert(0, dictionary.get('manList'))
-dataPlace.insert(0, dictionary.get('maxData'))
-womanList.insert(0, dictionary.get('womanList'))
-
-parser = Parser(btnStop, filePath, filePathReserve, dataPlace, manList, womanList)
-
-window.mainloop()
+    def errorMessageNoSheet(self):
+        stopEvent()
+        self.errorMsg = Label(self, foreground="red", text="Проверьте имена листов")
+        self.errorMsg.grid(column=0, row=6)
 
 if __name__ == "__main__":
-    window.mainloop()
+    app = UserApp()
+    app.title("")
+    app.iconbitmap(r'systemData/icon2.ico')
+    app["bg"] = "#171717"
+    width = app.winfo_screenwidth()
+    height = app.winfo_screenheight()
+    app.geometry('%dx%d' % (width / 3, height / 4))
+
+    app.mainloop()
 
 

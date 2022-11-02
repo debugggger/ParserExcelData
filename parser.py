@@ -11,10 +11,10 @@ from tkinter import filedialog
 
 from peoplesData import People
 
-stopParsingThread = threading.Event()
+
 
 class Parser(object):
-    def __init__(self, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
+    def __init__(self, app, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
         self.fileName = ''
         self.peoples = []
         self.prevExcDataM = []
@@ -30,12 +30,13 @@ class Parser(object):
         self.btnStop = btnStop
         self.filePath = filePath
         self.filePathReserve = filePathReserve
-        self.lastPlace = dataPlace.get()
+        self.lastPlace = dataPlace
         self.startPlace = 'A1'
         self.colInd = self.col2num(self.lastPlace)
         self.colLetter = self.lastColLetter(self.lastPlace)
-        self.manList = ManList.get()
-        self.womanList = WomanList.get()
+        self.manList = ManList
+        self.womanList = WomanList
+        self.app = app
 
     def col2num(self, col):
         num = 0
@@ -54,31 +55,36 @@ class Parser(object):
     def startEvent(self):
         threadParsing = Thread(target=self.parsingData)
         threadParsing.start()
-        self.btnStop.grid(column=1, row=3)
+        self.btnStop.grid(column=1, row=5)
+        self.app.errorMsg.grid_remove()
+        self.stopParsingThread = threading.Event()
 
 
     def stopEvent(self):
-        stopParsingThread.set()
+        self.stopParsingThread.set()
         self.btnStop.grid_remove()
 
     def browseFiles(self):
+
         self.fileName = filedialog.askopenfilename(initialdir="/",
                                               title="Select a File",
                                               filetypes=(("Excel files",
                                                           "*.xls*"),
                                                          ("all files",
                                                           "*.*")))
-
         self.filePath.insert(0, self.fileName)
-        self.getChangeTime()
-        reserveFile = self.getReserveFile()
-        if reserveFile != '':
-            if os.path.getmtime(reserveFile) > os.path.getmtime(self.fileName):
-                self.getPrevData(reserveFile, 'autoRecovery')
-            if self.t2 <= self.t1:
+        if self.fileName != '':
+            self.getChangeTime()
+            reserveFile = self.getReserveFile()
+            if reserveFile != '':
+                if os.path.getmtime(reserveFile) > os.path.getmtime(self.fileName):
+                    self.getPrevData(reserveFile, 'autoRecovery')
+                if self.t2 <= self.t1:
+                    self.getPrevData(self.fileName, 'handRecovery')
+            else:
                 self.getPrevData(self.fileName, 'handRecovery')
-        else:
-            self.getPrevData(self.fileName, 'handRecovery')
+
+
 
     def getReserveFile(self):
         try:
@@ -187,55 +193,61 @@ class Parser(object):
         self.t1 = os.path.getmtime(self.fileName)
 
     def parsingData(self):
-        prevFile = ''
-        while True:
-            reserveFile = self.getXlsxReserveFile()
+        try:
+            prevFile = ''
+            while True:
+                reserveFile = self.getXlsxReserveFile()
 
-            if self.t1 != os.path.getmtime(self.fileName):
-                if self.fileName.split('.')[-1] == 'xls':
-                    reservePath = self.filePathReserve.get()
-                    df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.sheet)
-                    nameTrueFile = (self.fileName.split('/')[-1]).split('.')[0] + '.xlsx'
-                    patchXlsx = reservePath+nameTrueFile
-                    df.to_excel(patchXlsx)
-                    sheetName = 'Sheet1'
-                    xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
-                    sheet = xlsx.get_sheet_by_name(sheetName)
-                    sheet.delete_cols(1, 1)
-                    sheet.title = self.sheet
-                    xlsx.save(patchXlsx)
-                    self.readData(patchXlsx, 'handRecovery')
-                    os.remove(patchXlsx)
-                else:
-                    self.readData(self.fileName, 'handRecovery')
-                self.getChangeTime()
+                if self.t1 != os.path.getmtime(self.fileName):
+                    if self.fileName.split('.')[-1] == 'xls':
+                        reservePath = self.filePathReserve.get()
+                        df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.sheet)
+                        nameTrueFile = (self.fileName.split('/')[-1]).split('.')[0] + '.xlsx'
+                        patchXlsx = reservePath+nameTrueFile
+                        df.to_excel(patchXlsx)
+                        sheetName = 'Sheet1'
+                        xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
+                        sheet = xlsx.get_sheet_by_name(sheetName)
+                        sheet.delete_cols(1, 1)
+                        sheet.title = self.sheet
+                        xlsx.save(patchXlsx)
+                        self.readData(patchXlsx, 'handRecovery')
+                        os.remove(patchXlsx)
+                    else:
+                        self.readData(self.fileName, 'handRecovery')
+                    self.getChangeTime()
 
 
-            if reserveFile != prevFile and os.path.getmtime(self.fileName) < self.t2 and reserveFile != '':
-                prevFile = reserveFile
-                self.readData(reserveFile, 'autoRecovery')
+                if reserveFile != prevFile and os.path.getmtime(self.fileName) < self.t2 and reserveFile != '':
+                    prevFile = reserveFile
+                    self.readData(reserveFile, 'autoRecovery')
 
-            if stopParsingThread.is_set():
-                break
-            time.sleep(10)
+                if self.stopParsingThread.is_set():
+                    break
+                time.sleep(10)
+        except:
+            self.app.errorMessageNoFile()
 
     def getMData(self, file):
-        self.prevExcDataM = []
-        xlsx = openpyxl.load_workbook(file, data_only=True)
-        currentSheet = xlsx[self.manList]
-        i = 1
-        for row in currentSheet[self.startPlace:self.lastPlace]:
-            j = 1
-            for cell in row:
-                self.prevExcDataM.append(cell.value)
-                if type(cell.value) == str and re.search(r'квал', cell.value):
-                    self.cvalResMCol = cell.column_letter
-                    self.cvalResMRow = i + 2
-                if type(cell.value) == str and re.search(r'финал', cell.value):
-                    self.finalResMCol = cell.column_letter
-                    self.finalResMRow = i + 2
-                j += 1
-            i += 1
+        try:
+            self.prevExcDataM = []
+            xlsx = openpyxl.load_workbook(file, data_only=True)
+            currentSheet = xlsx[self.manList]
+            i = 1
+            for row in currentSheet[self.startPlace:self.lastPlace]:
+                j = 1
+                for cell in row:
+                    self.prevExcDataM.append(cell.value)
+                    if type(cell.value) == str and re.search(r'квал', cell.value):
+                        self.cvalResMCol = cell.column_letter
+                        self.cvalResMRow = i + 2
+                    if type(cell.value) == str and re.search(r'финал', cell.value):
+                        self.finalResMCol = cell.column_letter
+                        self.finalResMRow = i + 2
+                    j += 1
+                i += 1
+        except:
+            self.app.errorMessageNoSheet()
 
     def getWData(self, file):
         self.prevExcDataW = []
