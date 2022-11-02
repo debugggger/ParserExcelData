@@ -1,5 +1,6 @@
 import os
 import re
+import string
 import threading
 import time
 import pandas as pd
@@ -13,7 +14,7 @@ from peoplesData import People
 stopParsingThread = threading.Event()
 
 class Parser(object):
-    def __init__(self, btnStop, filePath, varGender, filePathReserve, dataPlace):
+    def __init__(self, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
         self.fileName = ''
         self.peoples = []
         self.prevExcDataM = []
@@ -28,9 +29,27 @@ class Parser(object):
         self.t2 = 0.0
         self.btnStop = btnStop
         self.filePath = filePath
-        self.varGender = varGender
         self.filePathReserve = filePathReserve
-        self.dataPlace = dataPlace
+        self.lastPlace = dataPlace.get()
+        self.startPlace = 'A1'
+        self.colInd = self.col2num(self.lastPlace)
+        self.colLetter = self.lastColLetter(self.lastPlace)
+        self.manList = ManList.get()
+        self.womanList = WomanList.get()
+
+    def col2num(self, col):
+        num = 0
+        for c in col:
+            if c in string.ascii_letters:
+                num = num * 26 + (ord(c.upper()) - ord('A')) + 1
+        return num
+
+    def lastColLetter(self, col):
+        letters = ''
+        for c in col:
+            if c in string.ascii_letters:
+                letters += c
+        return letters
 
     def startEvent(self):
         threadParsing = Thread(target=self.parsingData)
@@ -116,9 +135,7 @@ class Parser(object):
             eng = 'pyxlsb'
 
         if len(self.prevExcDataM) > 0:
-            startPlace = 'A1'
-            lastPlace = 'z210'
-            dfM = pd.read_excel(trueFile, engine=eng, sheet_name='Рез_Муж')
+            dfM = pd.read_excel(trueFile, engine=eng, sheet_name=self.manList)
             nameTrueFileM = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
             dfM.to_excel(nameTrueFileM)
             xlsx = openpyxl.load_workbook(nameTrueFileM, data_only=True)
@@ -126,15 +143,14 @@ class Parser(object):
             sheet = xlsx[sheetName]
             sheet.delete_cols(1, 1)
             index = 0
-            for row in sheet[startPlace:lastPlace]:
+            for row in sheet[self.startPlace:self.lastPlace]:
                 for cell in row:
                     if cell.value != self.prevExcDataM[index]:
-                        a = self.prevExcDataM[index]
                         if type(cell.value) == str:
                             if re.search(r'Unnamed', cell.value):
-                                index += 26
+                                index += self.colInd
                                 break
-                        self.sheet = 'Рез_Муж'
+                        self.sheet = self.manList
                         sheet.title = self.sheet
                         xlsx.save(nameTrueFileM)
                         xlsx.close()
@@ -142,7 +158,7 @@ class Parser(object):
                     index += 1
 
         if len(self.prevExcDataW) > 0:
-            dfW = pd.read_excel(trueFile, engine=eng, sheet_name='Рез_Жен')
+            dfW = pd.read_excel(trueFile, engine=eng, sheet_name=self.womanList)
             nameTrueFileW = (trueFile.split('/')[-1]).split('.')[0] + '.xlsx'
             dfW.to_excel(nameTrueFileW)
 
@@ -151,14 +167,14 @@ class Parser(object):
             sheet = xlsx[sheetName]
             sheet.delete_cols(1, 1)
             index = 0
-            for row in sheet[startPlace:lastPlace]:
+            for row in sheet[self.startPlace:self.lastPlace]:
                 for cell in row:
                     if cell.value != self.prevExcDataW[index]:
                         if type(cell.value) == str:
                             if re.search(r'Unnamed', cell.value):
-                                index += 26
+                                index += self.colInd
                                 break
-                        self.sheet = 'Рез_Жен'
+                        self.sheet = self.womanList
                         sheet.title = self.sheet
                         xlsx.save(nameTrueFileW)
                         xlsx.close()
@@ -206,9 +222,9 @@ class Parser(object):
     def getMData(self, file):
         self.prevExcDataM = []
         xlsx = openpyxl.load_workbook(file, data_only=True)
-        currentSheet = xlsx['Рез_Муж']
+        currentSheet = xlsx[self.manList]
         i = 1
-        for row in currentSheet['A1':'Z210']:
+        for row in currentSheet[self.startPlace:self.lastPlace]:
             j = 1
             for cell in row:
                 self.prevExcDataM.append(cell.value)
@@ -224,9 +240,9 @@ class Parser(object):
     def getWData(self, file):
         self.prevExcDataW = []
         xlsx = openpyxl.load_workbook(file, data_only=True)
-        currentSheet = xlsx['Рез_Жен']
+        currentSheet = xlsx[self.womanList]
         i = 1
-        for row in currentSheet['A1':'Z210']:
+        for row in currentSheet[self.startPlace:self.lastPlace]:
             j = 1
             for cell in row:
                 self.prevExcDataW.append(cell.value)
@@ -246,64 +262,64 @@ class Parser(object):
             self.getWData(file)
         if mode == 'autoRecovery':
             xl = pd.ExcelFile(file)
-            if xl.sheet_names == 'Рез_Муж':
+            if xl.sheet_names == self.manList:
                 self.getMData(file)
-            if xl.sheet_names == 'Рез_Жен':
+            if xl.sheet_names == self.womanList:
                 self.getWData(file)
 
     def readData(self, nameReadFile, mode):
         self.peoples = []
         xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
-        startPlace = 'A1'
-        lastPlace = 'z210'
         isChange = 0
         index = 0
         isExit = 0
         i = 1
         stage = ''
+        startPlace = self.startPlace
+        lastPlace = self.lastPlace
 
         if mode == 'autoRecovery' and self.sheet != '':
             currentSheet = xlsx[self.sheet]
 
-            for row in currentSheet[startPlace:lastPlace]:
+            for row in currentSheet[self.startPlace:self.lastPlace]:
                 for cell in row:
-                    if self.sheet == 'Рез_Муж' and len(self.prevExcDataM) > 0:
+                    if self.sheet == self.manList and len(self.prevExcDataM) > 0:
                         if cell.value != self.prevExcDataM[index]:
                             if type(cell.value) == str:
                                 if re.search(r'Unnamed', cell.value):
-                                    index += 26
+                                    index += self.colInd
                                     break
                             isChange = 1
-                            self.sheet = 'Рез_Муж'
+                            self.sheet = self.manList
                             if i >= self.cvalResMRow:
                                 startPlace = str(self.cvalResMCol) + str(self.cvalResMRow)
-                                lastPlace = 'z210'
+                                lastPlace = self.lastPlace
                                 isExit = 1
                                 stage = 'квалификация, мужчины'
                                 break
                             if i >= self.finalResMRow and i < self.cvalResMRow:
                                 startPlace = str(self.finalResMCol) + str(self.finalResMRow)
-                                lastPlace = 'z' + str(self.cvalResMRow - 3)
+                                lastPlace = self.colLetter + str(self.cvalResMRow - 3)
                                 isExit = 1
                                 stage = 'финал, мужчины'
                                 break
-                    if self.sheet == 'Рез_Жен' and len(self.prevExcDataW) > 0:
+                    if self.sheet == self.womanList and len(self.prevExcDataW) > 0:
                         if cell.value != self.prevExcDataW[index]:
                             if type(cell.value) == str:
                                 if re.search(r'Unnamed', cell.value):
-                                    index += 26
+                                    index += self.colInd
                                     break
                             isChange = 1
-                            self.sheet = 'Рез_Жен'
+                            self.sheet = self.womanList
                             if i >= self.cvalResWRow:
                                 startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
-                                lastPlace = 'z210'
+                                lastPlace = self.lastPlace
                                 isExit = 1
                                 stage = 'квалификация, женщины'
                                 break
                             if i >= self.finalResWRow and i < self.cvalResWRow:
                                 startPlace = str(self.finalResWCol) + str(self.finalResWRow)
-                                lastPlace = 'z' + str(self.cvalResWRow - 3)
+                                lastPlace = self.colLetter + str(self.cvalResWRow - 3)
                                 isExit = 1
                                 stage = 'финал, женщины'
                                 break
@@ -314,21 +330,21 @@ class Parser(object):
 
         if mode == 'handRecovery':
             if len(self.prevExcDataM) > 0:
-                currentSheet = xlsx['Рез_Муж']
-                for row in currentSheet[startPlace:lastPlace]:
+                currentSheet = xlsx[self.manList]
+                for row in currentSheet[self.startPlace:self.lastPlace]:
                     for cell in row:
                         if cell.value != self.prevExcDataM[index]:
                             isChange = 1
-                            self.sheet = 'Рез_Муж'
+                            self.sheet = self.manList
                             if i >= self.cvalResMRow:
-                                startPlace =  str(self.cvalResMCol) + str(self.cvalResMRow)
-                                lastPlace = 'z210'
+                                startPlace = str(self.cvalResMCol) + str(self.cvalResMRow)
+                                lastPlace = self.lastPlace
                                 isExit = 1
                                 stage = 'квалификация, мужчины'
                                 break
                             if i >= self.finalResMRow and i < self.cvalResMRow:
                                 startPlace = str(self.finalResMCol) + str(self.finalResMRow)
-                                lastPlace = 'z' + str(self.cvalResMRow - 3)
+                                lastPlace = self.colLetter + str(self.cvalResMRow - 3)
                                 isExit = 1
                                 stage = 'финал, мужчины'
                                 break
@@ -339,22 +355,22 @@ class Parser(object):
 
             if isChange == 0 and len(self.prevExcDataW) > 0:
                 i = 1
-                currentSheet = xlsx['Рез_Жен']
+                currentSheet = xlsx[self.womanList]
                 index = 0
-                for row in currentSheet[startPlace:lastPlace]:
+                for row in currentSheet[self.startPlace:self.lastPlace]:
                     for cell in row:
                         if cell.value != self.prevExcDataW[index]:
                             isChange = 1
-                            self.sheet = 'Рез_Жен'
+                            self.sheet = self.womanList
                             if i >= self.cvalResWRow:
                                 startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
-                                lastPlace = 'z210'
+                                lastPlace = self.lastPlace
                                 isExit = 1
                                 stage = 'квалификация, женщины'
                                 break
                             if i >= self.finalResWRow and i < self.cvalResWRow:
                                 startPlace = str(self.finalResWCol) + str(self.finalResWRow)
-                                lastPlace = 'z' + str(self.cvalResWRow - 3)
+                                lastPlace = self.colLetter + str(self.cvalResWRow - 3)
                                 isExit = 1
                                 stage = 'финал, женщины'
                                 break
@@ -413,9 +429,8 @@ class Parser(object):
             for i in self.peoples:
                 if People.getTotal(i) != 0:
                     print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i),
-                          " ",
-                          People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i), " ",
-                          People.getC3(i), " ",
+                          " ", People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i),
+                          " ", People.getC3(i), " ",
                           People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
             print('______________________________')
 
