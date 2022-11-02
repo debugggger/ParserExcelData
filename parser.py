@@ -32,8 +32,8 @@ class Parser(object):
         self.filePathReserve = filePathReserve
         self.lastPlace = dataPlace
         self.startPlace = 'A1'
-        self.colInd = self.col2num(self.lastPlace)
-        self.colLetter = self.lastColLetter(self.lastPlace)
+        self.colInd = 0
+        self.colLetter = ''
         self.manList = ManList
         self.womanList = WomanList
         self.app = app
@@ -58,6 +58,8 @@ class Parser(object):
         self.btnStop.grid(column=1, row=5)
         self.app.errorMsg.grid_remove()
         self.stopParsingThread = threading.Event()
+        self.colInd = self.col2num(self.lastPlace)
+        self.colLetter = self.lastColLetter(self.lastPlace)
 
 
     def stopEvent(self):
