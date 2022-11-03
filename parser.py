@@ -11,8 +11,6 @@ from tkinter import filedialog
 
 from peoplesData import People
 
-
-
 class Parser(object):
     def __init__(self, app, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
         self.xlsxFileMan = ''
@@ -62,10 +60,11 @@ class Parser(object):
             self.app.errorMessageAdr()
 
     def startEvent(self):
+        self.app.updAll()
+        self.app.errorMsg.grid_remove()
         threadParsing = Thread(target=self.parsingData)
         threadParsing.start()
         self.btnStop.grid(column=1, row=5)
-        self.app.errorMsg.grid_remove()
         self.colInd = self.col2num(self.lastPlace)
         self.colLetter = self.lastColLetter(self.lastPlace)
 
@@ -75,7 +74,7 @@ class Parser(object):
         self.btnStop.grid_remove()
 
     def browseFiles(self):
-
+        self.app.clearFileName()
         self.fileName = filedialog.askopenfilename(initialdir="/",
                                               title="Select a File",
                                               filetypes=(("Excel files",
@@ -133,10 +132,6 @@ class Parser(object):
                         if len(current) >= len(trueFile):
                             maxTimeFile = os.path.getmtime(current)
                             trueFile = current
-                    # if current.split('.')[-1] == 'xlsx':
-                    #     if re.search(self.manList, current) or re.search(self.womanList, current):
-                    #         maxTimeFile = os.path.getmtime(current)
-                    #         trueFile = current
 
             if self.prevReserveFile == trueFile:
                 return ''
@@ -273,7 +268,6 @@ class Parser(object):
                                     index += 1
                                 if isExit == 1:
                                     break
-
                     else:
                         self.readData(self.fileName, 'handRecovery')
                     self.getChangeTime()
@@ -535,4 +529,3 @@ class Parser(object):
             print('______________________________')
 
             self.getPrevData(nameReadFile, mode)
-

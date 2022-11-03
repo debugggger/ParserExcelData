@@ -30,8 +30,6 @@ class UserApp(Tk):
         self.dataPlaceLbl.grid(column=0, row=2)
         self.dataPlace = Entry(self, width=10)
         self.dataPlace.grid(column=1, row=2)
-        self.btnUpdDP = Button(self, text="обновить", command=self.updDict)
-        self.btnUpdDP.grid(column=2, row=2)
 
         self.lblManList = Label(self, text="Имя листа мужских соревнований")
         self.lblManList.grid(column=0, row=3)
@@ -44,8 +42,6 @@ class UserApp(Tk):
         self.lblWomanList.grid(column=0, row=4)
         self.womanList = Entry(self, width=10)
         self.womanList.grid(column=1, row=4)
-        self.btnUpdWLN = Button(self, text="обновить", command=self.updDict)
-        self.btnUpdWLN.grid(column=2, row=4)
 
         self.btnStart = Button(self, text="начать", command=startEvent)
         self.btnStart.grid(column=0, row=5)
@@ -110,10 +106,26 @@ class UserApp(Tk):
         self.errorMsg = Label(self, foreground="red", text="Проверьте указанный адрес ячейки")
         self.errorMsg.grid(column=0, row=6)
 
+    def updAll(self):
+        self.dataPlace.delete(0, END)
+        self.manList.delete(0, END)
+        self.womanList.delete(0, END)
+        self.maxData = self.dictionary.get('maxData')
+        self.manListName = self.dictionary.get('manList')
+        self.womanListName = self.dictionary.get('womanList')
+        self.dataPlace.insert(0, self.maxData)
+        self.manList.insert(0, self.manListName)
+        self.womanList.insert(0, self.womanListName)
+
+    def clearFileName(self):
+        self.filePath.delete(0, END)
+        self.updAll()
+
+
+
 if __name__ == "__main__":
     app = UserApp()
     app.title("")
-    app.iconbitmap(r'systemData/icon2.ico')
     app["bg"] = "#171717"
     width = app.winfo_screenwidth()
     height = app.winfo_screenheight()

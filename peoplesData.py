@@ -1,5 +1,3 @@
-
-
 class People(object):
     def __init__(self, place, name, year, discharge, city, school, secBalls, c1, c2, c3, turns1, turns2, total):
         self.place = place
