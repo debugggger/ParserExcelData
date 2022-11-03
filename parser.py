@@ -15,6 +15,8 @@ from peoplesData import People
 
 class Parser(object):
     def __init__(self, app, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
+        self.xlsxFileMan = ''
+        self.xlsxFileWoman = ''
         self.fileName = ''
         self.peoples = []
         self.prevExcDataM = []
@@ -92,30 +94,32 @@ class Parser(object):
             else:
                 self.getPrevData(self.fileName, 'handRecovery')
 
+    def getReservePatch(self):
+        reservePath = self.filePathReserve.get()
+        name = (self.fileName.split('/')[-1]).split('.')[0]
 
+        checkT = 0
+        maxTime = 0.01
+        truePath = ''
+        for dir in os.listdir(reservePath):
+            if len(name) <= len(dir):
+                for i in range(len(name)):
+                    if name[i] == dir[i]:
+                        checkT = 1
+                        truePath = reservePath + dir
+                    else:
+                        checkT = 0
+                        break
+
+            if checkT == 1:
+                if os.path.getmtime(reservePath + dir) > maxTime:
+                    maxTime = os.path.getmtime(reservePath + dir)
+                    truePath = reservePath + dir + '\\'
+        return truePath
 
     def getReserveFile(self):
         try:
-            reservePath = self.filePathReserve.get()
-            name = (self.fileName.split('/')[-1]).split('.')[0]
-
-            checkT = 0
-            maxTime = 0.01
-            truePath = ''
-            for dir in os.listdir(reservePath):
-                if len(name) <= len(dir):
-                    for i in range(len(name)):
-                        if name[i] == dir[i]:
-                            checkT = 1
-                            truePath = reservePath + dir
-                        else:
-                            checkT = 0
-                            break
-
-                if checkT == 1:
-                    if os.path.getmtime(reservePath + dir) > maxTime:
-                        maxTime = os.path.getmtime(reservePath + dir)
-                        truePath = reservePath + dir + '\\'
+            truePath = self.getReservePatch()
 
             trueFile = ''
             maxTimeFile = 0.01
@@ -129,11 +133,17 @@ class Parser(object):
                         if len(current) >= len(trueFile):
                             maxTimeFile = os.path.getmtime(current)
                             trueFile = current
+                    # if current.split('.')[-1] == 'xlsx':
+                    #     if re.search(self.manList, current) or re.search(self.womanList, current):
+                    #         maxTimeFile = os.path.getmtime(current)
+                    #         trueFile = current
+
             if self.prevReserveFile == trueFile:
                 return ''
             return trueFile
         except:
             return ''
+
 
     def getXlsxReserveFile(self):
         trueFile = self.getReserveFile()
@@ -205,22 +215,65 @@ class Parser(object):
             prevFile = ''
             while True:
                 reserveFile = self.getXlsxReserveFile()
+                isChange = 0
 
                 if self.tChOriFile != os.path.getmtime(self.fileName):
                     if self.fileName.split('.')[-1] == 'xls':
-                        reservePath = self.filePathReserve.get()
-                        df = pd.read_excel(self.fileName, engine='xlrd', sheet_name=self.sheet)
-                        nameTrueFile = (self.fileName.split('/')[-1]).split('.')[0] + '.xlsx'
-                        patchXlsx = reservePath+nameTrueFile
-                        df.to_excel(patchXlsx)
-                        sheetName = 'Sheet1'
-                        xlsx = openpyxl.load_workbook(patchXlsx, data_only=True)
-                        sheet = xlsx.get_sheet_by_name(sheetName)
-                        sheet.delete_cols(1, 1)
-                        sheet.title = self.sheet
-                        xlsx.save(patchXlsx)
-                        self.readData(patchXlsx, 'handRecovery')
-                        os.remove(patchXlsx)
+                        if len(self.prevExcDataM) > 0:
+                            sheetName = 'Sheet1'
+                            if reserveFile == '':
+                                sheetName = self.manList
+                                reserveFile = self.xls2xlsx(self.fileName, sheetName)
+                            xlsx = openpyxl.load_workbook(reserveFile, data_only=True)
+                            sheet = xlsx[sheetName]
+                            index = 0
+                            isExit = 0
+                            for row in sheet[self.startPlace:self.lastPlace]:
+                                for cell in row:
+                                    if cell.value != self.prevExcDataM[index]:
+                                        if type(cell.value) == str:
+                                            if re.search(r'Unnamed', cell.value):
+                                                index += self.colInd
+                                                break
+                                        self.sheet = self.manList
+                                        sheet.title = self.sheet
+                                        xlsx.save(reserveFile)
+                                        xlsx.close()
+                                        self.readData(reserveFile, 'autoRecovery')
+                                        isExit = 1
+                                        isChange = 1
+                                        break
+                                    index += 1
+                                if isExit == 1:
+                                    break
+
+                        if len(self.prevExcDataW) > 0 and isChange == 0:
+                            sheetName = 'Sheet1'
+                            if reserveFile == self.xlsxFileMan:
+                                sheetName = self.womanList
+                                reserveFile = self.xls2xlsx(self.fileName, sheetName)
+                            xlsx = openpyxl.load_workbook(reserveFile, data_only=True)
+                            sheet = xlsx[sheetName]
+                            index = 0
+                            isExit = 0
+                            for row in sheet[self.startPlace:self.lastPlace]:
+                                for cell in row:
+                                    if cell.value != self.prevExcDataW[index]:
+                                        if type(cell.value) == str:
+                                            if re.search(r'Unnamed', cell.value):
+                                                index += self.colInd
+                                                break
+                                        self.sheet = self.womanList
+                                        sheet.title = self.sheet
+                                        xlsx.save(reserveFile)
+                                        xlsx.close()
+                                        self.readData(reserveFile, 'autoRecovery')
+                                        isExit = 1
+                                        break
+                                    index += 1
+                                if isExit == 1:
+                                    break
+
                     else:
                         self.readData(self.fileName, 'handRecovery')
                     self.getChangeTime()
@@ -278,17 +331,41 @@ class Parser(object):
         except:
             self.app.errorMessageNoSheet()
 
+    def xls2xlsx(self, file, currentSheet):
+        df = pd.read_excel(file, engine='xlrd', sheet_name=currentSheet)
+        self.patchXlsx = self.getReservePatch() + currentSheet+'-'+(file.split('/')[-1]).split('.')[0] + '.xlsx'
+        df.to_excel(self.patchXlsx)
+        sheetName = 'Sheet1'
+        xlsx = openpyxl.load_workbook(self.patchXlsx, data_only=True)
+        sheet = xlsx.get_sheet_by_name(sheetName)
+        sheet.delete_cols(1, 1)
+        sheet.title = currentSheet
+        xlsx.save(self.patchXlsx)
+        return self.patchXlsx
 
     def getPrevData(self, file, mode):
+        tempFile = file
         if mode == 'handRecovery':
-            self.getMData(file)
-            self.getWData(file)
+            if file.split('.')[-1] == 'xls':
+                self.xlsxFileMan = self.xls2xlsx(file, self.manList)
+                tempFile = self.xlsxFileMan
+            self.getMData(tempFile)
+            if file.split('.')[-1] == 'xls':
+                self.xlsxFileWoman = self.xls2xlsx(file, self.womanList)
+                tempFile = self.xlsxFileWoman
+            self.getWData(tempFile)
         if mode == 'autoRecovery':
             xl = pd.ExcelFile(file)
-            if xl.sheet_names == self.manList:
-                self.getMData(file)
-            if xl.sheet_names == self.womanList:
-                self.getWData(file)
+            if xl.sheet_names[0] == self.manList:
+                if file.split('.')[-1] == 'xls':
+                    self.xlsxFileMan = self.xls2xlsx(file, self.manList)
+                    tempFile = self.xlsxFileMan
+                self.getMData(tempFile)
+            if xl.sheet_names[0] == self.womanList:
+                if file.split('.')[-1] == 'xls':
+                    self.xlsxFileWoman = self.xls2xlsx(file, self.womanList)
+                    tempFile = self.xlsxFileWoman
+                self.getWData(tempFile)
 
     def readData(self, nameReadFile, mode):
         self.peoples = []
