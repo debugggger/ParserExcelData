@@ -13,40 +13,43 @@ def stopEvent():
 class UserApp(Tk):
     def __init__(self):
         super().__init__()
-        self.lbl = Label(self, background="#171717", foreground="white", text="Путь к рабочему файлу")
-        self.lbl.grid(column=0, row=0)
-        self.filePath = Entry(self, width=40)
-        self.filePath.grid(column=1, row=0)
-        self.btn = Button(self, text="поиск", command=browseFiles)
-        self.btn.grid(column=2, row=0)
+        self.lblhead = Label(text="", background="#323232", pady=5)
+        self.lblhead.grid(column=0, row=0, )
 
-        self.lblReserve = Label(self, text="Путь к резервной папке")
-        self.lblReserve.grid(column=0, row=1)
-        self.filePathReserve = Entry(self, width=40)
-        self.filePathReserve.grid(column=1, row=1)
+        self.lbl = Label(self, background="#323232", foreground="white", text="Путь к рабочему файлу", pady=5)
+        self.lbl.grid(column=0, row=1, )
+        self.filePath = Entry(self, width=38)
+        self.filePath.grid(column=1, row=1)
+        self.btn = Button(self, cursor="hand2", text="поиск", command=browseFiles)
+        self.btn.grid(column=2, row=1)
+
+        self.lblReserve = Label(self, background="#323232",  foreground="white", text="Путь к резервной папке", pady=5)
+        self.lblReserve.grid(column=0, row=2)
+        self.filePathReserve = Entry(self, width=38)
+        self.filePathReserve.grid(column=1, row=2)
         self.filePathReserve.insert(0, r'C:\Users' '\\' + os.getenv('USERNAME') + '\AppData\Roaming\Microsoft\Excel' '\\')
 
-        self.dataPlaceLbl = Label(self, text="Последняя ячейка данных")
-        self.dataPlaceLbl.grid(column=0, row=2)
+        self.dataPlaceLbl = Label(self, background="#323232",  foreground="white", text="Последняя ячейка данных", pady=5)
+        self.dataPlaceLbl.grid(column=0, row=3)
         self.dataPlace = Entry(self, width=10)
-        self.dataPlace.grid(column=1, row=2)
+        self.dataPlace.grid(column=1, row=3)
 
-        self.lblManList = Label(self, text="Имя листа мужских соревнований")
-        self.lblManList.grid(column=0, row=3)
+        self.lblManList = Label(self, background="#323232", foreground="white", text="Имя листа мужских соревнований", pady=5)
+        self.lblManList.grid(column=0, row=4)
         self.manList = Entry(self, width=10)
-        self.manList.grid(column=1, row=3)
-        self.btnUpdMLN = Button(self, text="обновить", command=self.updDict)
-        self.btnUpdMLN.grid(column=2, row=3)
+        self.manList.grid(column=1, row=4)
+        self.btnUpdMLN = Button(self, cursor="hand2", text="обновить", command=self.updDict)
+        self.btnUpdMLN.grid(column=2, row=4)
 
-        self.lblWomanList = Label(self, text="Имя листа женских соревнований")
-        self.lblWomanList.grid(column=0, row=4)
+        self.lblWomanList = Label(self, background="#323232",  foreground="white", text="Имя листа женских соревнований", pady=5)
+        self.lblWomanList.grid(column=0, row=5)
         self.womanList = Entry(self, width=10)
-        self.womanList.grid(column=1, row=4)
+        self.womanList.grid(column=1, row=5)
 
-        self.btnStart = Button(self, text="начать", command=startEvent)
-        self.btnStart.grid(column=0, row=5)
+        self.btnStart = Button(self, cursor="hand2", text="начать", command=startEvent)
+        self.btnStart.grid(column=0, row=6)
 
-        self.btnStop = Button(self, text="остановить", command=stopEvent)
+        self.btnStop = Button(self, cursor="hand2", text="остановить", command=stopEvent)
         self.btnStop.grid_remove()
 
         self.errorMsg = Label(self, foreground="red", text="")
@@ -93,13 +96,13 @@ class UserApp(Tk):
 
     def errorMessageNoFile(self):
         stopEvent()
-        self.errorMsg = Label(self, foreground="red", text="Ошибка чтения файла")
+        self.errorMsg = Label(self, background="#323232", foreground="red", text="Ошибка чтения файла")
         self.errorMsg.grid(column=0, row=6)
         browseFiles()
 
     def errorMessageNoSheet(self):
         stopEvent()
-        self.errorMsg = Label(self, foreground="red", text="Проверьте имена листов")
+        self.errorMsg = Label(self, background="#323232", foreground="red", text="Проверьте имена листов")
         self.errorMsg.grid(column=0, row=6)
 
     def errorMessageAdr(self):
@@ -126,7 +129,8 @@ class UserApp(Tk):
 if __name__ == "__main__":
     app = UserApp()
     app.title("")
-    app["bg"] = "#171717"
+    app["bg"] = "#323232"
+    app.resizable(0,0)
     width = app.winfo_screenwidth()
     height = app.winfo_screenheight()
     x = (width / 2) - (width / 6)
