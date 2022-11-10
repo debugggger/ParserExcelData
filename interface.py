@@ -13,7 +13,7 @@ def stopEvent():
 class UserApp(Tk):
     def __init__(self):
         super().__init__()
-        self.lblhead = Label(text="", background="#323232", pady=5)
+        self.lblhead = Label(text="", background="#323232", pady=0)
         self.lblhead.grid(column=0, row=0, )
 
         self.lbl = Label(self, background="#323232", foreground="white", text="Путь к рабочему файлу", pady=5)
@@ -97,17 +97,17 @@ class UserApp(Tk):
     def errorMessageNoFile(self):
         stopEvent()
         self.errorMsg = Label(self, background="#323232", foreground="red", text="Ошибка чтения файла")
-        self.errorMsg.grid(column=0, row=6)
+        self.errorMsg.grid(column=0, row=7)
         browseFiles()
 
     def errorMessageNoSheet(self):
         stopEvent()
         self.errorMsg = Label(self, background="#323232", foreground="red", text="Проверьте имена листов")
-        self.errorMsg.grid(column=0, row=6)
+        self.errorMsg.grid(column=0, row=7)
 
     def errorMessageAdr(self):
         self.errorMsg = Label(self, foreground="red", text="Проверьте указанный адрес ячейки")
-        self.errorMsg.grid(column=0, row=6)
+        self.errorMsg.grid(column=0, row=7)
 
     def updAll(self):
         self.dataPlace.delete(0, END)
