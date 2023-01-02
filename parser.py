@@ -9,7 +9,10 @@ import openpyxl
 from threading import Thread
 from tkinter import filedialog
 
+from bot import Bot
 from peoplesData import People
+
+from beautifultable import BeautifulTable
 
 class Parser(object):
     def __init__(self, app, btnStop, filePath, filePathReserve, dataPlace, ManList, WomanList):
@@ -38,6 +41,7 @@ class Parser(object):
         self.womanList = WomanList
         self.app = app
         self.stopParsingThread = threading.Event()
+        self.bot = Bot()
 
     def col2num(self, col):
         try:
@@ -64,7 +68,7 @@ class Parser(object):
         self.app.errorMsg.grid_remove()
         threadParsing = Thread(target=self.parsingData)
         threadParsing.start()
-        self.btnStop.grid(column=1, row=5)
+        self.btnStop.grid(column=1, row=6)
         self.colInd = self.col2num(self.lastPlace)
         self.colLetter = self.lastColLetter(self.lastPlace)
 
@@ -362,12 +366,15 @@ class Parser(object):
                 self.getWData(tempFile)
 
     def readData(self, nameReadFile, mode):
+        global thisPeople
         self.peoples = []
         xlsx = openpyxl.load_workbook(nameReadFile, data_only=True)
         isChange = 0
         index = 0
         isExit = 0
         i = 1
+        changedRow = 0
+        startRow = 0
         stage = ''
         startPlace = self.startPlace
         lastPlace = self.lastPlace
@@ -389,12 +396,16 @@ class Parser(object):
                                 startPlace = str(self.cvalResMCol) + str(self.cvalResMRow)
                                 lastPlace = self.lastPlace
                                 isExit = 1
+                                startRow = self.cvalResMRow
+                                changedRow = i
                                 stage = 'квалификация, мужчины'
                                 break
                             if i >= self.finalResMRow and i < self.cvalResMRow:
                                 startPlace = str(self.finalResMCol) + str(self.finalResMRow)
                                 lastPlace = self.colLetter + str(self.cvalResMRow - 3)
                                 isExit = 1
+                                startRow = self.finalResMRow
+                                changedRow = i
                                 stage = 'финал, мужчины'
                                 break
                     if self.sheet == self.womanList and len(self.prevExcDataW) > 0:
@@ -409,12 +420,16 @@ class Parser(object):
                                 startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
                                 lastPlace = self.lastPlace
                                 isExit = 1
+                                startRow = self.cvalResWRow
+                                changedRow = i
                                 stage = 'квалификация, женщины'
                                 break
                             if i >= self.finalResWRow and i < self.cvalResWRow:
                                 startPlace = str(self.finalResWCol) + str(self.finalResWRow)
                                 lastPlace = self.colLetter + str(self.cvalResWRow - 3)
                                 isExit = 1
+                                startRow = self.finalResWRow
+                                changedRow = i
                                 stage = 'финал, женщины'
                                 break
                     index += 1
@@ -434,12 +449,16 @@ class Parser(object):
                                 startPlace = str(self.cvalResMCol) + str(self.cvalResMRow)
                                 lastPlace = self.lastPlace
                                 isExit = 1
+                                startRow = self.cvalResMRow
+                                changedRow = i
                                 stage = 'квалификация, мужчины'
                                 break
                             if i >= self.finalResMRow and i < self.cvalResMRow:
                                 startPlace = str(self.finalResMCol) + str(self.finalResMRow)
                                 lastPlace = self.colLetter + str(self.cvalResMRow - 3)
                                 isExit = 1
+                                startRow = self.finalResMRow
+                                changedRow = i
                                 stage = 'финал, мужчины'
                                 break
                         index += 1
@@ -460,12 +479,16 @@ class Parser(object):
                                 startPlace = str(self.cvalResWCol) + str(self.cvalResWRow)
                                 lastPlace = self.lastPlace
                                 isExit = 1
+                                startRow = self.cvalResWRow
+                                changedRow = i
                                 stage = 'квалификация, женщины'
                                 break
                             if i >= self.finalResWRow and i < self.cvalResWRow:
                                 startPlace = str(self.finalResWCol) + str(self.finalResWRow)
                                 lastPlace = self.colLetter + str(self.cvalResWRow - 3)
                                 isExit = 1
+                                startRow = self.finalResWRow
+                                changedRow = i
                                 stage = 'финал, женщины'
                                 break
                         index += 1
@@ -476,7 +499,10 @@ class Parser(object):
 
         if isChange == 1:
             sheet = xlsx[self.sheet]
+            currentRow = 0
+            thisPeople = People("", "", "", "", "", "", "", "", "", "", "", "", "")
             for cellObj in sheet[startPlace:lastPlace]:
+                currentRow += 1
                 currentPeople = People("", "", "", "", "", "", "", "", "", "", "", "", "")
                 firstColumnInd = cellObj[0].column
                 currentColumn = firstColumnInd
@@ -503,11 +529,13 @@ class Parser(object):
                         currentPeople.turns1 = cell.value
                     if currentColumn == firstColumnInd + 20:
                         currentPeople.turns2 = cell.value
-                    if currentColumn == firstColumnInd + 21:
+                    if currentColumn == firstColumnInd + 22:
                         currentPeople.secBalls = cell.value
                     if currentColumn == firstColumnInd + 23:
                         currentPeople.total = cell.value
                     currentColumn += 1
+                if currentRow == changedRow - startRow + 1:
+                    thisPeople = currentPeople
                 if currentPeople.total is not None:
                     self.peoples.append(currentPeople)
 
@@ -518,14 +546,89 @@ class Parser(object):
                     if cPeople.getTotal() < nPeople.getTotal():
                         self.peoples[j], self.peoples[j + 1] = self.peoples[j + 1], self.peoples[j]
 
+            startNumbers = []
+            names = []
+            totals = []
+            startNumbers.append("номер")
+            names.append("фамилия")
+            totals.append("результат")
             print(stage)
+            message = stage + "\n"
             print('______________________________')
             for i in self.peoples:
                 if People.getTotal(i) != 0:
-                    print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i),
-                          " ", People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i),
-                          " ", People.getC3(i), " ",
-                          People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
+                    # print(People.getPlace(i), " ", People.getName(i), " ", People.getYear(i), " ", People.getDischarge(i),
+                    #       " ", People.getCity(i), " ", People.getSchool(i), " ", People.getC1(i), " ", People.getC2(i),
+                    #       " ", People.getC3(i), " ",
+                    #       People.getTurns1(i), People.getTurns2(i), People.getSecBalls(i), " ", People.getTotal(i))
+
+                    startNumbers.append(str(People.getPlace(i)))
+                    names.append(str(People.getName(i)))
+                    totals.append(str(People.getTotal(i)))
+
+            startNumbers2 = []
+            startNumbersLength = 0
+            for i in startNumbers:
+                if len(i) > startNumbersLength:
+                    startNumbersLength = len(i)
+            for i in range(len(startNumbers)):
+                fixLength = 0
+                if len(startNumbers[i]) < startNumbersLength:
+                    fixLength = (startNumbersLength - len(startNumbers[i]))*2+1
+                c = 0
+                while c < fixLength:
+                    c += 1
+                    startNumbers[i] += " "
+                startNumbers2.append(startNumbers[i])
+
+            names2 = []
+            namesLength = 0
+            for i in names:
+                if len(i) > namesLength:
+                    namesLength = len(i)
+            for i in range(len(names)):
+                fixLength = 0
+                if len(names[i]) < namesLength:
+                    fixLength = (namesLength - len(names[i])) * 2 + 1
+                c = 0
+                while c < fixLength:
+                    c += 1
+                    names[i] += " "
+                names2.append(names[i])
+
+            totals2 = []
+            totalsLength = 0
+            for i in totals:
+                if len(i) > totalsLength:
+                    totalsLength = len(i)
+            for i in range(len(names)):
+                fixLength = 0
+                if len(totals[i]) < totalsLength:
+                    fixLength = (totalsLength - len(totals[i])) * 2 + 1
+                c = 0
+                while c < fixLength:
+                    c += 1
+                    totals[i] += " "
+                totals2.append(totals[i])
+
+            myTable = ""
+            for i in range(len(startNumbers)):
+                myTable += startNumbers2[i] + '|' + names2[i] + '|' + totals2[i] + "\n"
+
+            print(myTable)
+
             print('______________________________')
+
+            message += "\nнагрудный номер - " + str(thisPeople.getPlace()) + "\nфамилия - " \
+                       + str(thisPeople.getName()) + "\nгод рождения - " + str(thisPeople.getYear())\
+                        + "\nразряд - " +  str(thisPeople.getDischarge()) + "\nгород - " +  str(thisPeople.getCity())\
+                        + "\nшкола - " +  str(thisPeople.getSchool() + "\nБАЛЛЫ ЗА ПОВОРОТЫ" + "\nсудья 1 - " + str(thisPeople.getC1())\
+                        + "\nсудья 2 - " + str(thisPeople.getC2()) + "\nсудья 3 - " +  str(thisPeople.getC3())\
+                        + "\nБАЛЛЫ ЗА ПРЫЖКИ" + "\nсудья 1 - " + str(thisPeople.getTurns1()) + "\nсудья 2 - " + str(thisPeople.getTurns2())\
+                        + "\nбаллы за время - " + str(thisPeople.getSecBalls()) + "\nСУММА - " + str(thisPeople.getTotal()))
+
+            self.bot.send_telegram(message)
+
+            self.bot.send_telegram(myTable)
 
             self.getPrevData(nameReadFile, mode)
